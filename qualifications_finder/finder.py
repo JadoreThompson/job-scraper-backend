@@ -2,7 +2,8 @@ import asyncio
 from playwright.async_api import async_playwright
 
 # Local
-from .config import QUEUE
+from config import QUEUE
+from .llm import LLMHandler
 
 
 async def get_cards(page):
@@ -96,7 +97,7 @@ async def linkedin(url: str, browser) -> None:
     page = await browser.new_page()
     await page.goto(url)    
     await linkedin_handler(page)
-
+    
 
 async def llm_handler(browser) -> None:
     LLM_SITE = 'https://chatgpt.com/'
@@ -109,21 +110,20 @@ async def llm_handler(browser) -> None:
     except Exception as e:
         print('llm_hander first: ', type(e), str(e))
     
-    input_locator = page.locator("[placeholder='Message ChatGPT']")
+    # input_locator = page.locator("[placeholder='Message ChatGPT']")
     
-    prompt_template = """
-    I need you to extract the requirements needed for this role in a json with 3 keys: experience which holds a list, salary which holds a float, salary type which is either\
-    daily, weekly, bi-weekly, monthly or annually and location which holds a string.:
+    # prompt_template = """
+    # I need you to extract the requirements needed for this role in a json with 3 keys: experience which holds a list, salary which holds a float, salary type which is either\
+    # daily, weekly, bi-weekly, monthly or annually and location which holds a string.:
     
-    Requirements: {requirements}
-    """
+    # Requirements: {requirements}
+    # """
     
     while True:
         try:
             data: any = QUEUE.get_nowait()
             if data:
-                await input_locator.type(prompt_template.format(requirements=data))
-                print(await page.locator('code.json').inner_html(timeout=1000))
+                await LLMHandler.get_response(page=page, payload=data)
                 QUEUE.task_done()
         except asyncio.queues.QueueEmpty:
             pass

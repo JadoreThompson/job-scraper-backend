@@ -1,4 +1,4 @@
-import asyncio
+import asyncio, requests, json, config
 
 # Local
 from qualifications_finder import finder
