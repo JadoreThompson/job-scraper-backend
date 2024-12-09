@@ -1,4 +1,5 @@
-import aiohttp, asyncio, json, traceback, aiofiles
+import aiohttp, asyncio, json, aiofiles
+from uuid import uuid4
 
 # Local
 from config import HEADER, MODEL, SCRAPE_OUTPUT_FILE
@@ -44,6 +45,7 @@ class LLMHandler:
             'role': 'user',
             'content': cls.prompt_template.format(requirements=payload)
         })
+        outcome: bool = False
         
         logger.info("Fetching response...")
         
@@ -58,6 +60,7 @@ class LLMHandler:
                         data = data['choices'][0]['message']['content']
                         data = data.replace('```', '').replace('json', '')
                         data = json.loads(data)
+                        data['job_id'] = uuid4()
                         
                         for k, v in data.items():
                             if v == 'None':
@@ -66,10 +69,12 @@ class LLMHandler:
                         cls.body['messages'].pop(-1)
                         await cls._write_to_file(data)
                         await asyncio.sleep(1)
+                        outcome = True
                     else:
                         logger.debug(f"Error fetching response: {rsp.status} - {rsp.reason}")
                     
                     logger.info("Finshed getting response")
+                    return outcome
                 except (json.decoder.JSONDecodeError, Exception) as e:
                     logger.error(f"{type(e)} {str(e)}")
                     

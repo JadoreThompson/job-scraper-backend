@@ -25,7 +25,7 @@ class LinkedInScraper:
         job_ids = set()
         count = 0
         
-        while True:
+        while cls.is_active:
             if count > 300:
                 break
 
@@ -78,7 +78,7 @@ class LinkedInScraper:
         target_attr = 'data-test-pagination-page-btn'
         pages = set({})
         
-        while True:
+        while cls.is_active:
             logger.info('Searching for cards...')
             await cls._get_cards(page)
             logger.info('Searching for paginations...')
@@ -122,7 +122,10 @@ class LinkedInScraper:
             try:
                 data: any = QUEUE.get_nowait()
                 if data:
-                    await LLMHandler.get_response(payload=data)
+                    result: bool = await LLMHandler.get_response(payload=data)
+                    if not result:
+                        cls.is_active = False
+                        
                     QUEUE.task_done()
             except asyncio.queues.QueueEmpty:
                 pass
