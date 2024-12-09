@@ -76,5 +76,8 @@ async def init_clean(json_filepath: str):
     print('Finance Count: ', _count(['finance', 'trading'], df))
         
 
+    df.to_csv(CLEANED_FILE, index=False)
+    
+
 if __name__ == "__main__":
     asyncio.run(init_clean(SCRAPE_OUTPUT_FILE))
