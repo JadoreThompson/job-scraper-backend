@@ -1,5 +1,7 @@
 import aiofiles, asyncio, json
 import pandas as pd
+
+from typing import List
 from pprint import pprint
 
 # Local
@@ -9,22 +11,14 @@ from config import SCRAPE_OUTPUT_FILE
 CLEANED_FILE = 'cleaned.csv'
 
 
-def count_language(language: str | list, df: pd.DataFrame) -> int:
-    count = None
+def count_language(language: List[str], df: pd.DataFrame) -> int:
+    count = {}
     
-    if isinstance(language, str):
-        count = df['experience'].apply(lambda item: language in item).sum()
-    elif isinstance(language, list):
-        for item in language:
-            count[item] = df['experience'].apply(lambda item: language in item).sum()
-            
+    for lang in language:
+        count[lang] = df['experience'].apply(lambda item: lang.lower() in item.lower()).sum()
+        
     return count
-
-
-def clean_data(df: pd.DataFrame):
-    df = df.dropna()
-    df['experience'] = df['experience'].apply(lambda item: item.strip())
-
+    
 
 async def load_data(filepath: str) -> list:
     """
@@ -70,10 +64,13 @@ async def init_clean(json_filepath: str):
     
     data = {'experience': experience}
     
-    df = pd.DataFrame(data)
-    df.to_csv(CLEANED_FILE, index=False)
     
-    clean_data(df)
+    # Loading DF
+    df = pd.DataFrame(data).dropna()
+    df['experience'] = df['experience'].apply(lambda item: item.strip())
+    
+    # Insights
+    language_count: dict = count_language(['python', 'java', 'c++'], df)
 
 if __name__ == "__main__":
     asyncio.run(init_clean(SCRAPE_OUTPUT_FILE))
