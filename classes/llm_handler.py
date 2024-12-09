@@ -1,7 +1,7 @@
 import aiohttp, asyncio, json, traceback, aiofiles
 
 # Local
-from config import HEADER, MODEL, OUTPUT_FILE
+from config import HEADER, MODEL, SCRAPE_OUTPUT_FILE
 from logger import CustomLogger
 
 
@@ -33,12 +33,20 @@ class LLMHandler:
     
     @classmethod
     async def get_response(cls, payload: str) -> None:
+        """
+        Fetches response from GROK. Injecting the requirements 
+        into the prompt template
+        
+        Args:
+            payload (str): HTML snippet of job description
+        """        
         cls.body['messages'].append({
             'role': 'user',
             'content': cls.prompt_template.format(requirements=payload)
         })
         
         logger.info("Fetching response...")
+        
         async with aiohttp.ClientSession(headers=HEADER) as session:
             async with session.post(
                 url="https://api.x.ai/v1/chat/completions", 
@@ -67,10 +75,10 @@ class LLMHandler:
                     
     @classmethod
     async def _write_to_file(cls, data: dict) -> None:
-        logger.info(f"Writing to {OUTPUT_FILE}")
+        logger.info(f"Writing to {SCRAPE_OUTPUT_FILE}")
         
         try:
-            async with aiofiles.open(OUTPUT_FILE, 'a') as f:
+            async with aiofiles.open(SCRAPE_OUTPUT_FILE, 'a') as f:
                 await f.write(json.dumps(data, indent=4) + '\n')
         except Exception as e:
             logger.error(f"{type(e)} {str(e)}")

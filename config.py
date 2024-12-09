@@ -14,4 +14,4 @@ HEADER = {
 MODEL = 'grok-beta'
 
 ROOT = os.path.dirname(__file__)
-OUTPUT_FILE = ROOT + '\\data.json'
+SCRAPE_OUTPUT_FILE = ROOT + '\\data.json'
