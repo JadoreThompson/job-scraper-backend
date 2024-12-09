@@ -11,7 +11,7 @@ from config import SCRAPE_OUTPUT_FILE
 CLEANED_FILE = 'cleaned.csv'
 
 
-def count_language(language: List[str], df: pd.DataFrame) -> int:
+def _count(language: List[str], df: pd.DataFrame) -> int:
     count = {}
     
     for lang in language:
@@ -70,7 +70,11 @@ async def init_clean(json_filepath: str):
     df['experience'] = df['experience'].apply(lambda item: item.strip())
     
     # Insights
-    language_count: dict = count_language(['python', 'java', 'c++'], df)
+    print('Language: ', _count(['python', 'java', 'c++', 'c'], df))
+    print('Degree: ', _count(['bachelors'], df))
+    print('AI Count: ', _count(['machine learning', 'ai'], df))
+    print('Finance Count: ', _count(['finance', 'trading'], df))
+        
 
 if __name__ == "__main__":
     asyncio.run(init_clean(SCRAPE_OUTPUT_FILE))
