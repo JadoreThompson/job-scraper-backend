@@ -1,5 +1,6 @@
 venv
 rec.py
+
 **__pycache__
 **.env
 **.csv

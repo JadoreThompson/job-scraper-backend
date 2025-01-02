@@ -28,3 +28,4 @@ class Scraper:
                 logger.error(f"{type(e)} {str(e)}")
             
             await asyncio.sleep(0.5)
+            
