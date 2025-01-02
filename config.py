@@ -1,17 +1,14 @@
 import os
-from dotenv import load_dotenv
-from asyncio.queues import Queue
+import logging
 
+# Files
+ROOT_PATH = os.path.dirname(__file__)
+TRANSFORMED_FILE = ROOT_PATH + '\\jsons\\langs_only.json'
+CLEANED_FILE = ROOT_PATH + '\\etl\\cleaned.csv'
 
-load_dotenv()
-
-QUEUE = Queue()
-
-# Grok
-HEADER = {
-    "Authorization": f"Bearer {os.getenv("GROK_API_KEY")}"
-}
-MODEL = 'grok-beta'
-
-ROOT = os.path.dirname(__file__)
-SCRAPE_OUTPUT_FILE = ROOT + '\\data.json'
+# Logging
+logging.basicConfig(
+    filename=ROOT_PATH + '\\etl\\app.log',
+    level=logging.INFO,
+    format="[%(levelname)s][%(asctime)s] %(name)s - %(funcName)s - %(message)s"
+)

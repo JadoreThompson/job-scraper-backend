@@ -1,31 +1,32 @@
 import asyncio
+import os
+import logging
+from dotenv import load_dotenv
 from playwright.async_api import async_playwright
 
 # Local
-from config import QUEUE
-from logger import CustomLogger
-from .llm_handler import LLMHandler
+from .scraper import Scraper
+
+load_dotenv()
+logger = logging.getLogger(__name__)
 
 
-logger = CustomLogger(module=__name__).logger
-
-
-class LinkedInScraper:
-    
-    is_active: bool = False
-    
-    @classmethod
-    async def _get_cards(cls, page):
+class LinkedInScraper(Scraper):
+    def __init__(self, queue: asyncio.Queue) -> None:
+        super().__init__(queue)
+        
+    async def _get_cards(self, page) -> None:
         """
         Finds all job cards on the page, clicks and retrieves the job's description
         Args:
             page (palaywright.page): 
         """    
+        print(type(page))
         cards = page.locator("div[data-job-id]")
         job_ids = set()
         count = 0
         
-        while cls.is_active:
+        while self._is_alive:
             if count > 300:
                 break
 
@@ -39,15 +40,14 @@ class LinkedInScraper:
                 
                 job_ids.add(jid)
                 await element.click()
-                
-                QUEUE.put_nowait(await page.locator('#job-details').inner_html())
+
+                self.queue.put_nowait(await page.locator('#job-details').text_content())
                 
                 await page.mouse.wheel(0, 50)
                 await asyncio.sleep(0.5)
             
 
-    @classmethod
-    async def _check_for_pages(cls, page, target_attr: str) -> set:    
+    async def _check_for_pages(self, page, target_attr: str) -> set:    
         """
         Looks for all pagination buttons
         
@@ -67,8 +67,7 @@ class LinkedInScraper:
         
         return page_nums
         
-    @classmethod
-    async def _linkedin_handler(cls, page) -> None:
+    async def _linkedin_handler(self, page) -> None:
         """
         Handles the recursive search process
 
@@ -78,14 +77,14 @@ class LinkedInScraper:
         target_attr = 'data-test-pagination-page-btn'
         pages = set({})
         
-        while cls.is_active:
+        while self._is_alive:
             logger.info('Searching for cards...')
-            await cls._get_cards(page)
+            await self._get_cards(page)
             logger.info('Searching for paginations...')
-            page_nums: set = await cls._check_for_pages(page, target_attr)
+            page_nums: set = await self._check_for_pages(page, target_attr)
             
             if len(page_nums) < 2: # single page
-                cls.is_active = False
+                self._is_alive = False
                 break
             
             if page_nums.difference(pages):
@@ -102,57 +101,32 @@ class LinkedInScraper:
             pages = tuple([pages[i] for i in range(len(pages)) if i > 0])
             
             if not pages: # No more pages
-                cls.is_active = False
+                self._is_alive = False
                 break
             
             logger.info(f'Clicking page {list(pages)[0]}')
             await page.locator(f"[{target_attr}='{list(pages)[0]}']").click()
             await asyncio.sleep(1)
         
-    @classmethod
-    async def _linkedin(cls, url: str, browser) -> None:
+    async def _linkedin(self, url: str, browser) -> None:
         page = await browser.new_page()
         logger.info('Navigating to url...')
         await page.goto(url)
-        await cls._linkedin_handler(page)
-        
-    @classmethod
-    async def _llm_handler(cls) -> None:
-        while cls.is_active:
-            try:
-                data: any = QUEUE.get_nowait()
-                if data:
-                    result: bool = await LLMHandler.get_response(payload=data)
-                    if not result:
-                        cls.is_active = False
-                        
-                    QUEUE.task_done()
-            except asyncio.queues.QueueEmpty:
-                pass
-            except Exception as e:
-                logger.error(f"{type(e)} {str(e)}")
+        await self._linkedin_handler(page)
             
-            await asyncio.sleep(0.5)
-            
-    @classmethod
-    async def init_scraper(cls, url: str) -> None:
+    async def init_scraper(self, url: str) -> None:
         async with async_playwright() as p:        
             logger.info("Initialising browser")
             browser = await p.chromium.launch_persistent_context(
-                user_data_dir="C:\\Users\\ADMIN\\AppData\\Local\\Google\\Chrome SxS\\User Data",
+                user_data_dir=os.getenv('CANARY_USER_DATA_DIR'),
                 headless=False,
-                executable_path="C:\\Users\\ADMIN\\AppData\\Local\\Google\\Chrome SxS\\Application\\chrome.exe" ,
+                executable_path=os.getenv('CANARY_EXEC_PATH'),
             )
             try:
-                cls.is_active = True
-                await asyncio.gather(*[cls._linkedin(url, browser), cls._llm_handler()])
+                self._is_alive = True
+                await asyncio.gather(*[self._linkedin(url, browser), self._llm_handler()])
             except KeyError:
                 pass
             finally:
                 logger.info('Closing browser...')
                 await browser.close()
-
-
-if __name__ == "__main__":
-    url = "https://www.linkedin.com/jobs/search/?currentJobId=4091928122&distance=25.0&f_PP=100495523&f_TPR=r2592000&geoId=101165590&keywords=python%20developer&origin=JOB_SEARCH_PAGE_JOB_FILTER&sortBy=DD"
-    asyncio.run(LinkedInScraper.init_scraper(url))

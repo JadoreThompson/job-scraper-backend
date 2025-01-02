@@ -7,10 +7,7 @@ from typing import List
 from pprint import pprint
 
 # Local
-from config import SCRAPE_OUTPUT_FILE
-
-
-CLEANED_FILE = 'cleaned.csv'
+from config import TRANSFORMED_FILE, CLEANED_FILE
 
 # Plot
 def _count(language: List[str], df: pd.DataFrame) -> dict:
@@ -114,4 +111,4 @@ async def init_clean(json_filepath: str):
     
 
 if __name__ == "__main__":
-    asyncio.run(init_clean(SCRAPE_OUTPUT_FILE))
+    asyncio.run(init_clean(TRANSFORMED_FILE))
