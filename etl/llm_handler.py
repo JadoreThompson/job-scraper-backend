@@ -3,7 +3,8 @@ import asyncio
 import json
 import aiofiles
 import logging
-
+import multiprocessing
+import queue
 from uuid import uuid4
 
 # Local
@@ -26,21 +27,33 @@ class LLMHandler:
     find it.
     """
     
-    def __init__(self, queue: asyncio.Queue) -> None:
-        self.queue = queue
+    def __init__(
+        self, 
+        scrape_queue, 
+        server_queue=None
+    ) -> None:
+        self.scrape_queue = scrape_queue
+        self.server_queue = server_queue
+        self._count = 0
+        self._data = []
     
     async def init_handler(self) -> None:
         logger.info('Initialised LLM Handler')
+        
         while True:
             try:
-                item: any = self.queue.get_nowait()
+                item: any = self.scrape_queue.get_nowait()
                 if isinstance(item, str):
                     await self._extract(item)
-                    self.queue.task_done()
-            except asyncio.queues.QueueEmpty:
+                    if isinstance(self.scrape_queue, asyncio.Queue):
+                        self.scrape_queue.task_done()
+                        
+            except (asyncio.queues.QueueEmpty, queue.Empty):
                 pass
-            finally:
-                await asyncio.sleep(0.01)
+            except Exception as e:
+                logger.error('{} - {}'.format(type(e), str(e)))
+            await asyncio.sleep(0.1)
+    
         
     async def _extract(self, text: str) -> None:
         langs = [
@@ -59,13 +72,24 @@ class LLMHandler:
             }
         )
         
-        await self._write_to_file(data)
+        self._data.append(data)
+        await self._route_data(data)
+        
+    async def _route_data(self, data: dict) -> None:
+        if self.server_queue:
+            self.server_queue.put_nowait(data)
+        
+        if self._count == 4:
+            await self._write_to_file(self._data)
+            self._count = 0
+        else:
+            self._count += 1
 
     async def _write_to_file(self, data: dict) -> None:
         logger.info(f"Writing to {TRANSFORMED_FILE}")
         
         try:
-            async with aiofiles.open(TRANSFORMED_FILE, 'a') as f:
+            async with aiofiles.open(TRANSFORMED_FILE, 'w') as f:
                 await f.write(json.dumps(data, indent=4) + '\n')
         except Exception as e:
             logger.error(f"{type(e)} {str(e)}")

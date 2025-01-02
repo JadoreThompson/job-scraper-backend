@@ -59,38 +59,9 @@ def _present(df: pd.DataFrame) -> None:
     # Presenting
     fig.tight_layout()
     plt.show()
-    
-
-async def load_data(filepath: str) -> list:
-    """
-    Assumes the data isn't in a list format,
-    converts to a list
-    
-    Args:
-        filepath (str): _description_
-    """    
-    async with aiofiles.open(filepath, 'r') as f:
-        data = await f.read()
-
-    data = data.replace('}', '},')
-    data = list(data)
-    data.insert(0, '[')
-    data.insert(-1, ']')
-    data.pop(-1)
-    data = ''.join(data)
-    
-    return json.loads(data)
 
 
-async def init_clean(json_filepath: str):
-    """
-    Entrypoint
-    
-    Args:
-        filepath (str): FilePath to the JSON file
-    """        
-    data: list = await load_data(filepath=json_filepath)
-
+def experience():
     experience: list = []
     
     for item in data:
@@ -108,6 +79,20 @@ async def init_clean(json_filepath: str):
     df['experience'] = df['experience'].apply(lambda item: item.strip())
     
     _present(df)
+    
+
+async def init_clean(json_filepath: str):
+    """
+    Entrypoint
+    
+    Args:
+        filepath (str): FilePath to the JSON file
+    """        
+    async with aiofiles.open(json_filepath, 'r') as f:
+        data = await f.read()
+    
+    data = json.loads(data)
+
     
 
 if __name__ == "__main__":

@@ -15,13 +15,12 @@ class LinkedInScraper(Scraper):
     def __init__(self, queue: asyncio.Queue) -> None:
         super().__init__(queue)
         
-    async def _get_cards(self, page) -> None:
+    async def _get_cards(self, page: "playwright.async_api._generated.Page") -> None:
         """
         Finds all job cards on the page, clicks and retrieves the job's description
         Args:
             page (palaywright.page): 
         """    
-        print(type(page))
         cards = page.locator("div[data-job-id]")
         job_ids = set()
         count = 0
@@ -115,7 +114,7 @@ class LinkedInScraper(Scraper):
         await self._linkedin_handler(page)
             
     async def init_scraper(self, url: str) -> None:
-        async with async_playwright() as p:        
+        async with async_playwright() as p:      
             logger.info("Initialising browser")
             browser = await p.chromium.launch_persistent_context(
                 user_data_dir=os.getenv('CANARY_USER_DATA_DIR'),
@@ -124,7 +123,7 @@ class LinkedInScraper(Scraper):
             )
             try:
                 self._is_alive = True
-                await asyncio.gather(*[self._linkedin(url, browser), self._llm_handler()])
+                await asyncio.gather(*[self._linkedin(url, browser)])
             except KeyError:
                 pass
             finally:
